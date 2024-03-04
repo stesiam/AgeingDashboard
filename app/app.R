@@ -8,6 +8,7 @@ library(tidyr)
 library(ggplot2)
 library(echarts4r)
 library(countrycode)
+
 # remove here
 
 # Setup -------------------------------------------------------------------
@@ -60,7 +61,7 @@ ui <- page_navbar(
         tags$span(
           bsicons::bs_icon("code-slash"), "Source code"
         ),
-        href = "https://github.com/rstudio/bslib/tree/main/inst/examples/flights",
+        href = "https://github.com/stesiam/AgeingDashboard",
         target = "_blank"
       )
     ),
@@ -83,11 +84,15 @@ ui <- page_navbar(
     value_box(
       title = "Life Expectancy",
       value = textOutput("lifeExpectancy"),
+      tags$div(class = "cl",
+               textOutput("life_exp_change")),
       showcase = icon("person-cane")
     ),
     value_box(
       title = "Total Fertility Rate",
       value = textOutput("tfr"),
+      tags$div(class = "cl",
+               textOutput("tfr_change")),
       showcase = icon("baby")
     ),
     value_box(
@@ -123,20 +128,42 @@ theme_set(theme_bw(base_size = 16))
 
 
 server <- function(input, output, session) {
+  
+
   filtered_mean = reactive({
     
     # Filter data based on selected country
-    filtered_data <- subset(total1, country == input$country & Year == input$year)
+    filtered_data <- subset(total1,((country == input$country))) %>%
+      subset(., (Year == input$year | Year == input$year - 10)) %>%
+      mutate(
+        ObsAchange = (obsA[2] - obsA[1])/obsA[1],
+        ObsCchange = (obsC[2] - obsC[1])/obsC[1]
+      )
     
     # Calculate mean
-    life_exp <- mean(filtered_data$obsA)
-    pop = filtered_data$obsB
-    tfr = filtered_data$obsC
+    life_exp <- filtered_data$obsA[2]
+    pop = filtered_data$obsB[2]
+    tfr = filtered_data$obsC[2]
+    life_exp_change = filtered_data$ObsAchange[2]
+    tfr_change = filtered_data$ObsCchange[2]
     # Return mean value
     
-    output = list(life_exp, pop, tfr)
+  
+    
+    output = list(life_exp, pop, tfr, life_exp_change , tfr_change)
     return(output)
   })
+  
+  output$life_exp_change = renderText({
+    paste0( round(filtered_mean()[[4]]*100,2), "%")
+  })
+  
+  
+  
+  output$tfr_change = renderText({
+    paste0( round(filtered_mean()[[5]]*100,2), "%")
+  })
+  
   
   output$lifeExpectancy <- renderText({
     round(filtered_mean()[[1]],2)
@@ -202,7 +229,15 @@ output$tfr_line = renderEcharts4r({
     print(input$country)
   })
   
-}
+  output$change = renderText({
+    
+  })
   
+}
+
+
+### Compare Year, Decade, 50Year
+
+
 
 shinyApp(ui, server)
