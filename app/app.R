@@ -51,7 +51,8 @@ dropdownOption <- function(country) {
 }
 
 ui <- page_navbar(
-  theme =  bs_theme(version = 5),footer = "stesiam, 2024",
+  theme =  bs_theme(version = 5),
+  footer = "stesiam, 2024",
   window_title = "Ageing Dashboard",
   
     title = "Ageing Population",
@@ -76,8 +77,13 @@ ui <- page_navbar(
                 choices = unique(total$country),
                 selected = "Greece"
     ),
-    br(),
-    sliderInput("year", "Select Year:", min = 1810, max = 2060, step = 5, value = 1950)
+    hr(),
+    sliderInput("year", "Select Year:", min = 1810, max = 2060, step = 5, value = 1950),
+    hr(),
+    selectInput("yeardiff", "Compare n-Years Before",
+                choices = c("10Y", "20Y","50Y"),
+                selected = "10Y"
+    )
   ),
   layout_columns(
     fill = FALSE,
@@ -107,16 +113,16 @@ ui <- page_navbar(
       title = "Historical Trends by Country",
       nav_panel(
         "Life Exp.",
-        echarts4rOutput("plot")
+        echarts4rOutput("plot", height = "260px")
       ),
       nav_panel(
         "TFR",
-        echarts4rOutput("tfr_line")
+        echarts4rOutput("tfr_line", height = "260px")
       )
     ),
-    card(full_screen = T,
+    card(full_screen = F,
          card_header("Map"),
-         echarts4rOutput("map")
+         echarts4rOutput("map", height = "260px")
     )
  )
 )
@@ -129,12 +135,25 @@ theme_set(theme_bw(base_size = 16))
 
 server <- function(input, output, session) {
   
+  
+  
+  findYear = reactive({
+    if (input$yeardiff == "10Y"){
+      years = 10
+    } else if (input$yeardiff == "20Y"){
+      years = 20
+    } else{
+      years = 50
+    }
+   
+    return(years) 
+  })
 
   filtered_mean = reactive({
     
     # Filter data based on selected country
     filtered_data <- subset(total1,((country == input$country))) %>%
-      subset(., (Year == input$year | Year == input$year - 10)) %>%
+      subset(., (Year == input$year | Year == input$year - findYear())) %>%
       mutate(
         ObsAchange = (obsA[2] - obsA[1])/obsA[1],
         ObsCchange = (obsC[2] - obsC[1])/obsC[1]
